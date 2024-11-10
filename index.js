@@ -1,44 +1,45 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-
-
-
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+
 const app = express();
 
-// Middleware setup
-app.use(cors());  // Enable CORS for all origins
-app.use(express.static('public')); // Serve static files from public directory
+// Set up multer for file handling
+const upload = multer({ dest: 'uploads/' });
 
-// Set up Multer for file uploads (store files in memory)
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+// Enable CORS
+app.use(cors());
+app.use(express.static('public'));
 
-// Serve the index page
+// Serve the index.html page
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html');
+  res.sendFile(process.cwd() + '/views/index.html');
 });
 
-// API endpoint to handle file uploads and return metadata
+// File upload API endpoint
 app.post('/api/fileanalyse', upload.single('upfile'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  // Extract file metadata without file-type
-  const { originalname, size } = req.file;
+  // Extract file metadata
+  const filePath = path.join(__dirname, req.file.path);
 
-  // Return file metadata as a JSON response
+  // Return the file metadata as JSON
   res.json({
-    name: originalname,
-    type: 'Unknown',  // No file type detection
-    size: size
+    name: req.file.originalname,   // File name
+    type: req.file.mimetype || 'Unknown',  // MIME type (if available)
+    size: req.file.size            // File size in bytes
   });
+
+  // Optionally, delete the file after processing (to avoid cluttering the uploads folder)
+  fs.unlinkSync(filePath);
 });
 
-
-// Start the server
+// Listen on the configured port
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log('Your app is listening on port ' + port);
